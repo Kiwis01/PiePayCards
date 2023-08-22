@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "lithic": "^0.26.2"
+  },
+  "name": "piepay",
+  "version": "1.0.0",
+  "main": "cards.js",
+  "type": "module",
+  "devDependencies": {},
+  "scripts": {
+    "test": "node  script.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
