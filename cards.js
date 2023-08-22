@@ -1,14 +1,15 @@
 import Lithic from 'lithic'
 
 //Imports from website
-var button = document.getElementById('myButton');
+var buttonCreate = document.getElementById('create');
+var buttonPay = document.getElementById('pay');
 var input_name = document.getElementById('inputName');
 var input_amount = document.getElementById('inputAmount');
 var input_users = document.getElementById('inputUsers');
 
 //Initialize Lithic package
 const lithic = new Lithic({
-    apiKey: process.env.APIKEY,
+    apiKey: '4226612e-c210-4581-bc7b-cff78941c64e',
     environment: 'sandbox'
 })
 
@@ -16,7 +17,6 @@ const lithic = new Lithic({
 function divideBillEvenly(amountToPay, numberOfUsers){
     //Divide evenly, but if there is an uneven number everyone will round up sorry but I MAKE THE RULES HERE
     let totalDue = amountToPay / numberOfUsers;
-
     if(amountToPay % numberOfUsers != 0){
         totalDue = Math.ceil(amountToPay / numberOfUsers);
     } 
@@ -25,7 +25,6 @@ function divideBillEvenly(amountToPay, numberOfUsers){
 
 //Update information of the current card
 function updateCardInfo(name, limit, card_token, card_state){
-
     //Card params
     const data = {
         memo: name,
@@ -58,51 +57,51 @@ function createCard(name, limit){
             throw err;
           }
     });
-    return card.card_token
-}
-
-//Main function to set up the whole bill, amountToPay and numberOfUsers are self explanatory, name_bill is the name the user set for the transaction
-function setUpBill(amountToPay, numberOfUsers, name_bill){
-
-    //First we create the card that will hold the amount to be payed and the name of the transaction
-    const token = createCard(name_bill, amountToPay);
-
-    //Then prompt how much each individual should pay
-    amount_due_per_individual = divideBillEvenly(amountToPay, numberOfUsers);
-
+    return card
 }
 
 //Transaction
-let amountToPay = 25;
-let descriptionBill = "BOBA SHOP";
-
-const simulation_params = TransactionSimulateAuthorizationParams = {
-    amount: amountToPay,              	// Transaction amount in smallest denominator (pennies for USD)
-    descriptor: descriptionBill, 	// Transaction descriptor
-    pan: "{Card PAN}",         	// Pass in the card.pan from the  "create card" step
-    // ^^ PAN aka Primary Account Number aka Card Number.
-    // This is the 16 digit number found on the front of cards.
-  }
-await lithic.transactions.simulateAuthorization(simulation_params)
-
-//Authorize transaction
-const rule_params = AuthRuleCreateParams = {
-    allowed_countries: ["USA"],
-    card_tokens: ["{Card Token}"] // apply rule to every transaction that occurs on this card
-  };
-const rule = await lithic.authRules.create(rule)
-
-//View transaction status
-const transaction_params = TransactionListParams = {
-	card_token: "{Card Token}" // only retrieve transactions for this card
-};
-const transactions = await lithic.transactions.list(transaction_params);
-
+let amountToPay = 1;
+let card;
 
 //Whenever button is pressed start everything
-button.addEventListener('click', function() {
-    setUpBill(input_amount, input_users, input_name);
+buttonCreate.addEventListener('click', function() {
+    //First we create the card that will hold the amount to be payed and the name of the transaction
+    card = createCard(input_name, input_amount);
 
+    //Then prompt how much each individual should pay
+    amountToPay = divideBillEvenly(input_amount, input_users);
+});
+
+//Pay button 
+buttonPay.addEventListener('click', async function(){
+    try{
+        //Generate transaction
+        const simulation_params = TransactionSimulateAuthorizationParams = {
+            amount: amountToPay,              	// Transaction amount in smallest denominator (pennies for USD)
+            descriptor: input_name, 	// Transaction descriptor
+            pan: card.pan,         	// Pass in the card.pan from the  "create card" step
+            // ^^ PAN aka Primary Account Number aka Card Number.
+            // This is the 16 digit number found on the front of cards.
+          }
+        await lithic.transactions.simulateAuthorization(simulation_params);
+
+          //Authorize transaction
+        const rule_params = AuthRuleCreateParams = {
+            allowed_countries: ["USA"],
+            card_tokens: [card.token] // apply rule to every transaction that occurs on this card
+        };
+        const rule = await lithic.authRules.create(rule)
+
+        //View transaction status
+        const transaction_params = TransactionListParams = {
+            card_token: card.token // only retrieve transactions for this card
+        };
+        const transactions = await lithic.transactions.list(transaction_params);
+
+    } catch (err) {
+        console.error('An error occurred: ', err);
+    }
 });
 
 
